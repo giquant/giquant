@@ -15,11 +15,11 @@ import numpy as np
 import pandas as pd
 
 # TODO: should cleanup trade.helpers!!
-import tsl.helpers as helpers
+from ..tsl.helpers import *
 
 
-FROM = helpers.dt2int(datetime.date.today() - datetime.timedelta(days=(30*365.24)))
-TO   = helpers.dt2int(datetime.date.today() + datetime.timedelta(days=(5*365.24)))
+FROM = dt2int(datetime.date.today() - datetime.timedelta(days=(30*365.24)))
+TO   = dt2int(datetime.date.today() + datetime.timedelta(days=(5*365.24)))
 
 CONTRACT_CODE2MONTH = {'F':1, 'G':2, 'H':3, 'J':4, 'K':5,  'M':6, 'N':7, 'Q':8, 'U':9, 'V':10, 'X':11, 'Z':12}
 
@@ -54,7 +54,7 @@ def get_exp(ccode_, conf_file='contracts', cals_='calF', src_='sc'):
     print(f'Unknown source: {src_}')
 
   print(root_contract, year, exp_code)
-  yaml_ = helpers.read_yaml(conf_file)
+  yaml_ = read_yaml(conf_file)
   cal = get_cal(root_contract, yaml_[f'{cals_}_fut'])
 
   cals = yaml_[cals_]
@@ -66,7 +66,7 @@ def get_exp(ccode_, conf_file='contracts', cals_='calF', src_='sc'):
     dts['check'] = dts.contract_code.map(lambda x: x in cals[cal]['months'])
     dts = dts[dts.check]
 
-  dts.exp = dts.exp.map(helpers.dt2int)
+  dts.exp = dts.exp.map(dt2int)
   dts['year'] = dts.exp // 10000
 
   return dts.loc[dts.contract_code==exp_code]['exp'].values[0]
@@ -84,7 +84,7 @@ def get_cals(conf):
   return pd.DataFrame(data=res, columns=['cal','root_symbol'])
 
 def get_exps(conf_file, cals_, from_, to_):
-  yaml_ = helpers.read_yaml(conf_file)
+  yaml_ = read_yaml(conf_file)
   cals = yaml_[cals_]  
   res = None
   for cal in cals:
@@ -96,7 +96,7 @@ def get_exps(conf_file, cals_, from_, to_):
       dts['check'] = dts.contract_code.map(lambda x: x in cals[cal]['months'])
       dts = dts[dts.check]
 
-    dts.exp = dts.exp.map(helpers.dt2int)
+    dts.exp = dts.exp.map(dt2int)
     dts['year'] = dts.exp // 10000
     dts['cal'] = cal
 
@@ -118,13 +118,13 @@ def get_exps(conf_file, cals_, from_, to_):
 
 def main(args):
   SAVE_FOLDER = args.folder
-  yaml_ = helpers.read_yaml(args.config)
+  yaml_ = read_yaml(args.config)
 
   cals = yaml_[args.cals]
 
   df1 = pd.DataFrame(pd.date_range(start=str(args.from_), end=str(args.to)), columns=['Date'])
   df1 = df1.set_index('Date')
-  df1.index = df1.index.map(helpers.dt2int)
+  df1.index = df1.index.map(dt2int)
   
   df = None
   for cal in cals:
@@ -136,12 +136,12 @@ def main(args):
       dts['check'] = dts.contract_code.map(lambda x: x in cals[cal]['months'])
       dts = dts[dts.check]
 
-    dts.exp = dts.exp.map(helpers.dt2int)
+    dts.exp = dts.exp.map(dt2int)
     dts['year'] = dts.exp // 10000
     #print(cal)
     #print(dts)
     for backend in args.backend.split(','):
-      helpers.dal_save_df(dts[['year','contract_code','exp']], args.folder, f'{cal}_{args.outfile}', backend, args.dbname)
+      dal_save_df(dts[['year','contract_code','exp']], args.folder, f'{cal}_{args.outfile}', backend, args.dbname)
     
     res = []
     for i in range(0, dts.shape[0] - args.no_exp):
@@ -189,6 +189,6 @@ if __name__ == '__main__':
   df = main(args)
 
   for backend in args.backend.split(','):
-    helpers.dal_save_df(df, args.folder, args.outfile, backend, args.dbname)
+    dal_save_df(df, args.folder, args.outfile, backend, args.dbname)
     
-  #helpers.save_df(df, f'{SAVE_FOLDER}/{args.outfile}')
+  #helper.save_df(df, f'{SAVE_FOLDER}/{args.outfile}')

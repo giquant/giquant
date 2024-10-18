@@ -7,7 +7,7 @@ import argparse
 import pandas as pd
 
 # TODO: should cleanup trade.helpers!!
-import tsl.helpers as helpers
+from ..tsl.helpers import *
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(prog='cc.py', description='Create continuous contract from parquet file with all contracts. Use the column with max Open Interest.')
@@ -23,7 +23,7 @@ if __name__ == '__main__':
   print(args)
 
   cols = args.cols.split(',')
-  df = helpers.dal_read_df(args.folder, args.infile, args.backend, args.dbname)
+  df = dal_read_df(args.folder, args.infile, args.backend, args.dbname)
   
   oi_cols = df.columns[list(map(lambda x: not re.search(args.argmax_col, x) is None, df.columns))]
   df['max_oi_col'] = df[oi_cols].idxmax(axis=1, skipna=True)
@@ -40,7 +40,7 @@ if __name__ == '__main__':
   res['ticker'] = res.ticker.map(lambda x: x[0:(len(x)-3)])
   res = res.set_index('Date')
   
-  helpers.dal_save_df(res, args.folder, args.outfile, args.backend, args.dbname)
+  dal_save_df(res, args.folder, args.outfile, args.backend, args.dbname)
 
 
 

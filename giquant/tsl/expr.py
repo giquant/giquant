@@ -27,7 +27,7 @@ import pandas as pd
 from inspect import signature
 from lark import Lark, Tree, Token
 
-from tsl import helpers
+from . import helpers
 
 DEBUG = False
 

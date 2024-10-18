@@ -8,7 +8,7 @@ import zipfile
 import requests
 import datetime
 
-import tsl.helpers as helpers
+from ..tsl.helpers import *
 
 
 # Main
@@ -58,19 +58,19 @@ def url(cmdtys, date, opt):
 
 def dwnl(cmdtys, date, opt):
   if cmdtys == 'disagg':
-    helpers.create_folder(COT_DISAGG_FOLDER)
+    create_folder(COT_DISAGG_FOLDER)
     folder = f'{COT_DISAGG_FOLDER}/{date.strftime("%Y")}'
   elif cmdtys == 'fin':
-    helpers.create_folder(COT_FIN_FOLDER)
+    create_folder(COT_FIN_FOLDER)
     folder = f'{COT_FIN_FOLDER}/{date.strftime("%Y")}'
   elif cmdtys == 'dea':
-    helpers.create_folder(COT_DEA_FOLDER)
+    create_folder(COT_DEA_FOLDER)
     folder = f'{COT_DEA_FOLDER}/{date.strftime("%Y")}'
   else:
     print('Unknown COT type:', cmdtys)
     sys.exit(0)
 
-  helpers.create_folder(folder)
+  create_folder(folder)
   target_folder = os.path.expanduser(folder)
 
   dwnl_and_unzip(url(cmdtys, date, opt),
@@ -125,7 +125,7 @@ if __name__ == '__main__':
   def cot_dea_folder(opt=False):
     return f'{CSV_PATH}/{FUT_ONLY_PREFIX if not opt else FUT_OPT_PREFIX}fut-dea'
 
-  #conf = helpers.read_config()
+  #conf = read_config()
   #DISAGG = conf['cot']['disagg']
   #FIN = conf['cot']['fin']
 
