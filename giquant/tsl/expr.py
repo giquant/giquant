@@ -27,7 +27,7 @@ import pandas as pd
 from inspect import signature
 from lark import Lark, Tree, Token
 
-import tsl.helpers as helpers
+import giquant.tsl.helpers as helpers
 
 DEBUG = False
 

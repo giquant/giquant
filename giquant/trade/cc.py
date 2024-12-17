@@ -7,7 +7,7 @@ import argparse
 import pandas as pd
 
 # TODO: should cleanup trade.helpers!!
-from tsl.helpers import *
+from giquant.tsl.helpers import *
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(prog='cc.py', description='Create continuous contract from parquet file with all contracts. Use the column with max Open Interest.')

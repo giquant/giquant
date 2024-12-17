@@ -8,8 +8,8 @@ from wtforms.validators import InputRequired
 
 from flask import current_app as app
 
-import tsl.server
-import tsl.helpers as helpers
+import giquant.tsl.server
+import giquant.tsl.helpers as helpers
 
 # Scaffolding
 # ===========

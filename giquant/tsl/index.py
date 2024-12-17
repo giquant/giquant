@@ -14,11 +14,11 @@ from flask_misaka import Misaka
 from ansi2html import Ansi2HTMLConverter
 
 # My modules
-import tsl.gg as tsl_gg
-import tsl.pr as tsl_pr
-import tsl.expr as tsl_expr
-import tsl.sql as tsl_sql
-import tsl.helpers as helpers
+import giquant.tsl.gg as tsl_gg
+import giquant.tsl.pr as tsl_pr
+import giquant.tsl.expr as tsl_expr
+import giquant.tsl.sql as tsl_sql
+import giquant.tsl.helpers as helpers
 
 from flask import current_app as app
 

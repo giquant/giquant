@@ -9,7 +9,8 @@
 from flask import Blueprint
 from flask import current_app as app
 
-import tsl.helpers as helpers
+import giquant.tsl.helpers as helpers
+
 
 # Scaffolding
 # ===========

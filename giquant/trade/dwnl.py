@@ -8,7 +8,7 @@ import zipfile
 import requests
 import datetime
 
-from tsl.helpers import *
+from giquant.tsl.helpers import *
 
 
 # Main

@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 # TODO: should cleanup trade.helpers!!
-from tsl.helpers import *
+from giquant.tsl.helpers import *
 
 
 FROM = dt2int(datetime.date.today() - datetime.timedelta(days=(30*365.24)))

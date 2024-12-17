@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from lark import Lark, Tree, Token
 
-from tsl.helpers import *
+from giquant.tsl.helpers import *
 
 
 # TODO: stat, sfunc and tfunc currently allow any functions (using the notation Ffunction_name.

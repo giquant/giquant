@@ -49,10 +49,10 @@ def create_app(index_file, tslfolder, tslbackend, tsldbname, pyfile, tslscript, 
   #from flask_wtf.csrf import CSRFProtect
   #csrf = CSRFProtect(app)
 
-  import tsl.index
-  from tsl.server_modules import expr_form, sql_form, gg_form, run_form, pr_form
+  from giquant.tsl import index
+  from giquant.tsl.server_modules import expr_form, sql_form, gg_form, run_form, pr_form
 
-  app.register_blueprint(tsl.index.route)
+  app.register_blueprint(index.route)
   app.register_blueprint(expr_form.route)
   app.register_blueprint(sql_form.route)
   app.register_blueprint(gg_form.route)
