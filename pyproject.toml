@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "giquant"
-version = "2024.0.3"
+version = "2024.0.5"
 dependencies = [
   "requests",
   "wget",

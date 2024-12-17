@@ -29,35 +29,39 @@ def create_args_parser():
   parser.add_argument('--tsl',        help='Script with tsl, ie. expr, gg or sql statements.')
   return parser
 
-def create_app():
-  parser = create_args_parser()
-  args = parser.parse_args()
-  print(args)
-
+def create_app(index_file, tslfolder, tslbackend, tsldbname, pyfile, tslscript, modules=None):
   app = Flask(__name__)
   app.config['SECRET_KEY'] = os.environ['SERVER_SECRET_KEY']
+
+  app.config.update(
+    INDEX_FILE = index_file,
+    INDEX_PAGE = Path(index_file).read_text(),
+    TSLFOLDER  = tslfolder,
+    TSLBACKEND = tslbackend,
+    TSLDBNAME  = tsldbname,
+    PYFILE     = pyfile,
+    TSLSCRIPT  = tslscript
+  )
+
   Misaka(app)
 
   # POST request have no data when this is enabled!
   #from flask_wtf.csrf import CSRFProtect
   #csrf = CSRFProtect(app)
 
-  app.config.update(
-    INDEX_FILE = args.index_file,
-    INDEX_PAGE = Path(args.index_file).read_text(),
-    TSLFOLDER  = args.folder,
-    TSLBACKEND = args.backend,
-    TSLDBNAME  = args.dbname,
-    PYFILE     = args.py,
-    TSLSCRIPT  = args.tsl
-  )
-
   import tsl.index
-  app.register_blueprint(tsl.index.route)
+  from tsl.server_modules import expr_form, sql_form, gg_form, run_form, pr_form
 
-  if not args.modules is None:
+  app.register_blueprint(tsl.index.route)
+  app.register_blueprint(expr_form.route)
+  app.register_blueprint(sql_form.route)
+  app.register_blueprint(gg_form.route)
+  app.register_blueprint(run_form.route)
+  app.register_blueprint(pr_form.route)
+
+  if not modules is None:
     mods = []
-    for module in args.modules.split(','):
+    for module in modules.split(','):
       mod = importlib.import_module(module)
       app.register_blueprint(mod.route)
       mods.append(mod)
@@ -66,6 +70,15 @@ def create_app():
   return app
 
 if __name__ == '__main__':
-  app = create_app()    
+  parser = create_args_parser()
+  args = parser.parse_args()
+  print(args)
+
+  app = create_app(args.index_file,
+                   args.folder,
+                   args.backend,
+                   args.dbname,
+                   args.py,
+                   args.tsl)
   app.run() 
 
