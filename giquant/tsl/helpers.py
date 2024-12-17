@@ -1,6 +1,7 @@
 # Helpers
 # =======
 
+import re
 import os
 import sys
 import yaml
@@ -126,6 +127,9 @@ def dt2int(dt, format_='%Y%m%d'):
 def int2dt(dt, format_='%Y%m%d'):
   return datetime.datetime.strptime(str(dt), format_)
 
+def month2date(dt, dayofmonth=1):
+  return dt2int(datetime.datetime.strptime(str(dt*10+dayofmonth),'%Y%m%d'))
+  
 # 240329 - Change from %W to %V
 def week2date(dt, dayofweek=1):
   return dt2int(datetime.datetime.strptime(str(dt*10+dayofweek),'%G%V%w'))
@@ -169,6 +173,19 @@ def filter_df(df, from_, to, variable, tickers):
     df_var = df_var.iloc[:,sel]
 
   return df_var
+
+# Like np.roll but first (or last) row(s) get a fill_value
+def shift_elements(arr, num, fill_value):
+    result = np.empty_like(arr)
+    if num > 0:
+        result[:num] = fill_value
+        result[num:] = arr[:-num]
+    elif num < 0:
+        result[num:] = fill_value
+        result[:num] = arr[-num:]
+    else:
+        result[:] = arr
+    return result
 
 
 # Data Access "Layer"
@@ -225,6 +242,48 @@ def dal_save_df(df_, folder_, outfile_, backend_, dbname_):
 
   else:
     print(f'Unknown backend {backend_}')
+
+
+import datetime
+import subprocess
+
+def get_tables(TSLFOLDER_, TSLDBNAME_, TSLBACKEND_):
+  res = None
+  if TSLBACKEND_=='parquet':
+    res = []
+    for item in os.scandir(TSLFOLDER_):
+      if item.name.split('.')[-1]=='parquet':
+        res.append([item.name.removesuffix(".parquet"), item.stat().st_size, datetime.datetime.fromtimestamp(item.stat().st_atime)])
+  elif TSLBACKEND_=='duckdb':
+    res = subprocess.check_output(f'echo ".tables" | duckdb {TSLFOLDER_}/{TSLDBNAME_}.duckdb', shell=True).decode("utf-8")
+    res = [ (x, '', '') for x in res.split() ]
+  else:
+    res = f'Backend {TSLBACKEND_} not supported'
+  return res
+
+def read_tsl(filename):
+  f = open(filename, 'r')
+
+  lines = f.readlines()
+  res = {}
+
+  name = ''
+  script = ''
+  for line in lines:
+    line = line.strip()
+    if line[0:4] == '#~~~':
+      if name != '':
+        res[name] = script
+      line = line[4:]
+      line = line.strip('~').strip()
+      name = line
+      script = ''
+    elif len(line)>0 and line[0] == "#":
+      continue
+    else:
+      script += line + '\n'
+
+  return res
 
 
 # Colors

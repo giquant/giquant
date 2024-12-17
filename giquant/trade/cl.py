@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 # TODO: should cleanup trade.helpers!!
-from ..tsl.helpers import *
+from tsl.helpers import *
 
 
 FROM = dt2int(datetime.date.today() - datetime.timedelta(days=(30*365.24)))
@@ -116,17 +116,22 @@ def get_exps(conf_file, cals_, from_, to_):
 # Main
 # =====
 
-def main(args):
-  SAVE_FOLDER = args.folder
-  yaml_ = read_yaml(args.config)
+def main2(args):
+  return main(args.folder, args.config, args.cals, args.from_, args.to, args.backend, args.outfile, args.dbname, no_exp_)
 
-  cals = yaml_[args.cals]
+def main(save_folder_, config_, config_cal_, from_, to_, backend_,  outfile_, dbname_, no_exp_):
+  SAVE_FOLDER = save_folder_         # args.folder
+  yaml_ = read_yaml(config_)         # read_yaml(args.config)
 
-  df1 = pd.DataFrame(pd.date_range(start=str(args.from_), end=str(args.to)), columns=['Date'])
+  cals = yaml_[config_cal_]          # yaml_[args.cals]
+
+  df1 = pd.DataFrame(pd.date_range(start=str(from_), end=str(to_)), columns=['Date'])
+  
   df1 = df1.set_index('Date')
   df1.index = df1.index.map(dt2int)
   
   df = None
+  df_cal = None
   for cal in cals:
     dts =  pd.DataFrame(pd.date_range(str(FROM), str(TO), freq=cals[cal]['freq']), columns=['exp'])
 
@@ -138,14 +143,18 @@ def main(args):
 
     dts.exp = dts.exp.map(dt2int)
     dts['year'] = dts.exp // 10000
-    #print(cal)
-    #print(dts)
-    for backend in args.backend.split(','):
-      dal_save_df(dts[['year','contract_code','exp']], args.folder, f'{cal}_{args.outfile}', backend, args.dbname)
+    for backend in backend_.split(','):        # args.backend.split(','):
+      dal_save_df(dts[['year','contract_code','exp']], save_folder_, f'{cal}_{outfile_}', backend, dbname_)
+
+    dts['cal'] = cal
+    if df_cal is None:
+      df_cal = dts[['cal','year','contract_code','exp']].copy()
+    else:
+      df_cal = pd.concat([df_cal, dts[['cal','year','contract_code','exp']].copy() ], axis=0)
     
     res = []
-    for i in range(0, dts.shape[0] - args.no_exp):
-      row = list(dts.iloc[i:i+args.no_exp].exp)
+    for i in range(0, dts.shape[0] - no_exp_):
+      row = list(dts.iloc[i:i+no_exp_].exp)
       row.insert(0, row[0])
       res.append(row)
 
@@ -168,7 +177,7 @@ def main(args):
       
   df = df.astype(int)
 
-  return df
+  return df, df_cal
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(prog='cl.py', description='Calculate futures and options expiration calendar')
@@ -186,8 +195,9 @@ if __name__ == '__main__':
   args = parser.parse_args()
   print(args)
 
-  df = main(args)
-
+  df, df_cal = main2(args)
+  print(df_cal)
+  
   for backend in args.backend.split(','):
     dal_save_df(df, args.folder, args.outfile, backend, args.dbname)
     

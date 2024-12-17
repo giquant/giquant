@@ -8,7 +8,7 @@ import zipfile
 import requests
 import datetime
 
-from ..tsl.helpers import *
+from tsl.helpers import *
 
 
 # Main
@@ -94,13 +94,12 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(prog='dwnl.py', description='Download data.')
   parser.add_argument('dataset', choices=['cot', 'cotopt', 'cothist', 'cotopthist'])
   parser.add_argument('dest')
-#  parser.add_argument('--config', default='dwnl.yaml')  # Not needed?
-  parser.add_argument('--da',              default='fut-disagg')
-  parser.add_argument('--fin',             default='fut-fin')
-  parser.add_argument('--dea',             default='fut-dea')
-  parser.add_argument('--fut_only_prefix', default='')
-  parser.add_argument('--opt_prefix',      default='fut-opt/')
-  parser.add_argument('--sep',             default=',')
+  parser.add_argument('--da',              help='Folder for disaggregated COT reports. Default is fut-disagg', default='fut-disagg')
+  parser.add_argument('--fin',             help='Folder for fiancial COT reports. Default is fut-fin',         default='fut-fin')
+  parser.add_argument('--dea',             help='Folder for legacy COT reports. Default is fut-dea',           default='fut-dea')
+  parser.add_argument('--fut_only_prefix', help='Prefix for futures only data. Default is none.',              default='')
+  parser.add_argument('--opt_prefix',      help='Prefix for options data. Defaut is fut-opt/',                 default='fut-opt/')
+  parser.add_argument('--sep',             help='Separator. Comma is default',                                 default=',')
 
   args = parser.parse_args()
   print(args)

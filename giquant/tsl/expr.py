@@ -27,7 +27,7 @@ import pandas as pd
 from inspect import signature
 from lark import Lark, Tree, Token
 
-from . import helpers
+import tsl.helpers as helpers
 
 DEBUG = False
 
@@ -65,7 +65,7 @@ yaml_files = {}
 #       could be of use for funds etc.
 #
 
-grammar = r'''?stmts: stmt                -> stmt
+grammar = r'''?stmts: stmt ";"           -> stmt
                   | stmt ";" stmts       -> seq
 
              ?stmt: VAR ":=" expr        -> assign_ctx
@@ -104,6 +104,7 @@ grammar = r'''?stmts: stmt                -> stmt
 
              ?bexpr:  bterm              
                    |  bexpr "or" bterm     -> or
+                   |  bexpr "and" bterm    -> and
                    |  expr  "=="  expr     -> eq
                    |  expr  "!="  expr     -> ne
                    |  expr  "<"  expr      -> lt
@@ -128,11 +129,13 @@ grammar = r'''?stmts: stmt                -> stmt
              FUNC: "F" (/\w/ "."*)+
              DICT: "D" /\w/+ "." /\w/+ "." /\w/+
              MAP:  "M" /\w/+ "." /\w/+ "." /\w/+
+             COMMENT: "#" /[\w \.]/+ ";"
 
              %import common.SIGNED_NUMBER -> NUMBER
              %import common.ESCAPED_STRING -> STRING
              %import common.WS
              %ignore WS
+             %ignore COMMENT
          '''
 
 def print_state():
@@ -377,6 +380,7 @@ def process_tokens():
         if t[2]=='V':
           colname = t[3:-1]
           newcols = list(map(lambda x: x.split('_')[0] + '_' + colname, tickers))
+          debug('Assign to',newcols)
           df.loc[:,newcols] = m1   # 240905 Changed from df[newcols] = m1, and also below!
         elif t[2]=='C':
           df.loc[:,t[3:-1]] = m1
@@ -399,7 +403,6 @@ def process_tokens():
       elif t[0]=='t':
         tickers = t[1:]
         cols = df.columns[list(map(lambda x: not re.search(f'^(Date|YearWeek)|^({tickers}_.*)', x) is None, df.columns))]
-        print(cols)
         df = df.loc[:,cols]
 
       elif t[0]=='v':
@@ -572,7 +575,7 @@ def process_tokens():
 
 
 def main(args):
-  global df, df_ctx
+  global df, df_ctx, DEBUG
   
   DEBUG = args.debug
   SAVE_FOLDER = args.folder #helpers.read_config()['config']['WIDE_FOLDER']
@@ -584,8 +587,11 @@ def main(args):
   if not args.py is None:
     from pathlib import Path
     parent = Path(__file__).resolve().parent
-
-    with open(f'{parent}/../../{args.py}.py', 'r') as f:
+    
+    # pyfilename = f'{parent}/../../{args.py}.py'
+    #pyfilename = f'{os.getcwd()}/{args.py}.py'
+    pyfilename = f'{args.py}.py'
+    with open(pyfilename, 'r') as f:
       py = f.read()
 
       # Check the code for name clashes before loading it
@@ -599,7 +605,7 @@ def main(args):
       exec(py, globals())
       debug(f'These functions are currently defined: {sorted([item for item in list(locals().keys()) if not item.startswith("__")])}')
   
-  conf = helpers.read_config()
+  # conf = helpers.read_config()
   l = Lark(grammar, start='stmts')
   tree = l.parse(args.stmts)
   visit(tree)
@@ -618,6 +624,7 @@ def main(args):
     '''
     df = helpers.dal_read_df(args.folder, args.infile, args.backend, args.dbname)
 
+    df.columns = list(map(lambda x: x.strip(), df.columns))
     df = df[sorted(df.columns)]
     df = df.fillna(np.nan)
     process_tokens()
@@ -631,8 +638,7 @@ def main(args):
         # helpers.save_df(df_ctx, f'{SAVE_FOLDER}/{args.outfile}_ctx')
         helpers.dal_save_df(df_ctx, args.folder, f'{args.outfile}_ctx', args.backend, args.dbname)
 
-
-
+  return 'Finished processing statements.'
 
 
 desc_ = f"""
@@ -650,15 +656,19 @@ Example: C4=C1+C2/-C3; F[T4|T1] =>
 Note: Column names are regular expressions. Columns in the filemust have the format ticker_variable. variable$ should be
       used when several variables have the same suffix. For instance Close$ should be used when both ticker_Close and 
       ticker_Close_hv20 exists.
+
+!!! Gotchas !!!
+      1) Vx is a regular expression. Vx will alao match Vxy. Use Vx$ if Vxy also exists.
+      2) Always use parenthesis around boolean expressions, eg. Vz if (Vx<Vy)... *not* if Vx<Vy
+      3) Negative numbers also need parenthesis, eg (-1) if (Vx<Vy)... *not -1 if (Vx<Vy)
 """
 
 def create_args_parser():
   parser = argparse.ArgumentParser(prog='expr.py', description=desc_, formatter_class=argparse.RawDescriptionHelpFormatter)
-  parser.add_argument('stmts',        help='Statements to parse. Use --help for full BNF.')
   parser.add_argument('folder',       help='Folder with tsl data.')
-#  parser.add_argument('--folder',     help='Folder with input and put files', default='~/aws-s3/gizur-trade-csv/wide')  # TODO: Remove default
   parser.add_argument('infile',       help='Parquet/CSV-file or table with data')
   parser.add_argument('outfile',      help='Parquet/CSV-file or table to store the result')
+  parser.add_argument('stmts',        help='Statements to parse. Use --help for full BNF.')
   parser.add_argument('--parse-only', help='Only parse the input and show tokens in postfix notation.', action=argparse.BooleanOptionalAction, default=False) 
   parser.add_argument('--debug',      help='Print debug messages', action=argparse.BooleanOptionalAction, default=False) 
   parser.add_argument('--py',         help='Python file to import. Functions that can be used in FUNC items (as part of expressions)')
