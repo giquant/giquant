@@ -20,6 +20,7 @@ from pathlib import Path
 
 def create_args_parser():
   parser = argparse.ArgumentParser(prog='server.py', description='Start web server.')
+  parser.add_argument('secret_key',   help='Used by Flask.')
   parser.add_argument('folder',       help='Folder with tsl data.')
   parser.add_argument('index_file',   help='Markdown file to use as first page.')
   parser.add_argument('--modules',    help='Modules to load. These are implemented as Flask Blueprints.')
@@ -29,11 +30,11 @@ def create_args_parser():
   parser.add_argument('--tsl',        help='Script with tsl, ie. expr, gg or sql statements.')
   return parser
 
-def create_app(index_file, tslfolder, tslbackend, tsldbname, pyfile, tslscript, modules=None):
+def create_app(secret_key, index_file, tslfolder, tslbackend, tsldbname, pyfile, tslscript, modules=None):
   app = Flask(__name__)
-  app.config['SECRET_KEY'] = os.environ['SERVER_SECRET_KEY']
 
   app.config.update(
+    SECRET_KEY = secret_key,
     INDEX_FILE = index_file,
     INDEX_PAGE = Path(index_file).read_text(),
     TSLFOLDER  = tslfolder,
@@ -49,8 +50,7 @@ def create_app(index_file, tslfolder, tslbackend, tsldbname, pyfile, tslscript, 
   #from flask_wtf.csrf import CSRFProtect
   #csrf = CSRFProtect(app)
 
-  from giquant.tsl import index
-  from giquant.tsl.server_modules import expr_form, sql_form, gg_form, run_form, pr_form
+  from giquant.tsl.server_modules import index, expr_form, sql_form, gg_form, run_form, pr_form
 
   app.register_blueprint(index.route)
   app.register_blueprint(expr_form.route)
@@ -74,7 +74,8 @@ if __name__ == '__main__':
   args = parser.parse_args()
   print(args)
 
-  app = create_app(args.index_file,
+  app = create_app(arg.secret_key,
+                   args.index_file,
                    args.folder,
                    args.backend,
                    args.dbname,

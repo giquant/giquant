@@ -7,9 +7,10 @@
 # documentation for more information.
 #
 
-from tsl.server import create_app
+from giquant.tsl.server import create_app
 
-app = create_app('./index.md',            # index_file
+app = create_app('<Some random string: openssl rand -hex 12>'   # random secret
+                 './index.md',            # index_file
                  '/var/www/tsldb',        # tslfolder
                  'duckdb',                # tslbackend
                  'tsldb',                 # tsldbname

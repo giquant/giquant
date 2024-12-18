@@ -42,4 +42,6 @@ cp /var/www/venv1/lib/python3.X/site-packages/giquant/tsl/passenger_wsgi.py .
 from giquant.tsl.server import app
 application = app
 
+# Copy the html-files to the web server
+cp -r <python path>/lib/python3.X/site-packages/giquant/tsl/server_modules/templates .
 ```
