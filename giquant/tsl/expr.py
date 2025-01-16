@@ -663,8 +663,9 @@ Note: Column names are regular expressions. Columns in the filemust have the for
       3) Negative numbers also need parenthesis, eg (-1) if (Vx<Vy)... *not -1 if (Vx<Vy)
 """
 
-def create_args_parser():
-  parser = argparse.ArgumentParser(prog='expr.py', description=desc_, formatter_class=argparse.RawDescriptionHelpFormatter)
+def create_args_parser(parser=None):
+  if parser is None:
+    parser = argparse.ArgumentParser(prog='expr.py', description=desc_, formatter_class=argparse.RawDescriptionHelpFormatter)
   parser.add_argument('folder',       help='Folder with tsl data.')
   parser.add_argument('infile',       help='Parquet/CSV-file or table with data')
   parser.add_argument('outfile',      help='Parquet/CSV-file or table to store the result')

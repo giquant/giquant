@@ -285,6 +285,36 @@ def read_tsl(filename):
 
   return res
 
+def read_tsl_(filename):
+  f = open(filename, 'r')
+
+  lines = f.readlines()
+  res = {}
+
+  name = ''
+  script = ''
+  for line in lines:
+    line = line.strip()
+    if line[0:4] == '#~~~':
+      if name != '':
+        parts = name.split(' ')
+        name_ = parts[0].split(':')[0]
+        script_args = {'type' : parts[0].split(':')[1]}
+        for part in parts[1:]:
+          script_args[part.split(':')[0]] = part.split(':')[1]
+        script_args['script'] = script
+        res[name_] = script_args
+      line = line[4:]
+      line = line.strip('~').strip()
+      name = line
+      script = ''
+    elif len(line)>0 and line[0] == "#":
+      continue
+    else:
+      script += line + '\n'
+
+  return res
+
 
 # Colors
 # ======

@@ -40,13 +40,16 @@ def cmp_tickers(df1, df2):
   ticks2 = set(list(map(lambda x: x.split('_')[0], df2.columns)))
 
   if ticks1 != ticks2:
-    print(f'ERROR! tickers differ: {ticks1.symmetric_difference(ticks2)}. In df1 but not df2: {ticks1.difference(ticks2)}. In df2 but not df1: {ticks2.difference(ticks1)}')
+    #print(f'ERROR! tickers differ: {ticks1.symmetric_difference(ticks2)}. In df1 but not df2: {ticks1.difference(ticks2)}. In df2 but not df1: {ticks2.difference(ticks1)}')
+    print(f'ERROR! tickers differ. In df1 but not df2: {ticks1.difference(ticks2)}. In df2 but not df1: {ticks2.difference(ticks1)}')
     return False
 
   return True
 
-if __name__ == '__main__':
-  parser = argparse.ArgumentParser(prog='merge.py', description='Merge files. Parquet and CSV is supported.')
+desc_='Merge files. Parquet and CSV is supported.'
+def create_args_parser(parser=None):
+  if parser is None:
+    parser = argparse.ArgumentParser(prog='merge.py', description=desc_)
   parser.add_argument('folder',    help='Folder with tsl data.')
   parser.add_argument('infile1',   help='Parquet-file or table with data')
   parser.add_argument('infile2',   help='Parquet/CSV-file or table with data')
@@ -60,9 +63,11 @@ if __name__ == '__main__':
   parser.add_argument('--cmp-tickers',  help='Compare tickers of the two files', action=argparse.BooleanOptionalAction, default=True)
   parser.add_argument('--backend',      help='Backend to use. Supported are: parquet, duckdb and csv]', default='parquet')
   parser.add_argument('--dbname',       help='Name of database (used as filename in duckdb)', default='tsldb')
-  args = parser.parse_args()
-  print(args)
+  return parser
 
+def main(args):
+  global SAVE_FOLDER
+  
   SAVE_FOLDER = args.folder   # helpers.read_config()['config']['WIDE_FOLDER']
   #SIG_FOLDER = helpers.read_config()['config']['SIG_FOLDER']
 
@@ -98,5 +103,10 @@ if __name__ == '__main__':
   df = df[sorted(list(df.columns))]
     
   helpers.dal_save_df(df, args.folder, args.outfile, args.backend, args.dbname)
+  #  helpers.save_df(df, f'{SAVE_FOLDER}/{args.outfile}')
   
-#  helpers.save_df(df, f'{SAVE_FOLDER}/{args.outfile}')
+if __name__ == '__main__':
+  parser = create_args_parser()
+  args = parser.parse_args()
+  print(args)
+  main(args)

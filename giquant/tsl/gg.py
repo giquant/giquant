@@ -307,8 +307,9 @@ def main(args):
   return myplot(df)
   
 
-def create_args_parser():
-  parser = argparse.ArgumentParser(prog='tsgg.py', description=desc_, formatter_class=argparse.RawDescriptionHelpFormatter)
+def create_args_parser(parser=None):
+  if parser is None:
+    parser = argparse.ArgumentParser(prog='gg.py', description=desc_, formatter_class=argparse.RawDescriptionHelpFormatter)
   parser.add_argument('folder',            help='Folder with input files (for csv & parquet) or database (for duckdb)')
   parser.add_argument('table',             help='File (for csv & parquet) or Table (for duckdb) to use.')
   parser.add_argument('outfile',           help='Currently not used! Here for consistent argumets with expr and sql.')

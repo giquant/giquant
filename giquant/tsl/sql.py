@@ -5,8 +5,11 @@ import pandas as pd
 from sqlalchemy import *
 
 
-def create_args_parser():
-  parser = argparse.ArgumentParser(prog='sql.py', description='Query database with sql-like code. SQLAlchemy Core is used to run the code.')
+desc_='Query database with sql-like code. SQLAlchemy Core is used to run the code.'
+
+def create_args_parser(parser=None):
+  if parser is None:
+    parser = argparse.ArgumentParser(prog='sql.py', description=desc_)
   parser.add_argument('folder',      help='Location of database file')
   parser.add_argument('tables',      help='Comma separated list of tables that are used in the sql')
   parser.add_argument('outfile',     help='Where to save the result')
