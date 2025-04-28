@@ -25,8 +25,8 @@ BASE_DATA = 'bdbasedata'
 
 # Columns to save in the final table
 COLS=[ 'year', 'yahoo',  'revenues', 'profit_Before_Tax',
-       'current_Assets', 'non_Current_Assets', 'current_Liabilities', 'non_Current_Liabilities', 'tangible_Assets',
-       'number_Of_Shares', 'earnings_Per_Share', 'dividend',
+       'current_Assets', 'non_Current_Assets', 'current_Liabilities', 'non_Current_Liabilities', 'tangible_Assets', 'total_Assets', 'total_Equity',
+       'number_Of_Shares', 'earnings_Per_Share', 'dividend', 'profit_To_Equity_Holders',
        'stock_Price_Average', 'stock_Price_High', 'stock_Price_Low'
       ]
 
@@ -81,7 +81,7 @@ def save_pl_df(df_, folder_, file_, show_=False):
   df_.write_parquet(f'{folder_}/{file_}.parquet')
 
   con = duckdb.connect(f'{folder_}/{DUCKDB}')
-  con.sql(f"CREATE TABLE {REPORTS} AS SELECT * FROM df_;")
+  con.sql(f"CREATE OR REPLACE TABLE {REPORTS} AS SELECT * FROM df_;")
   con.close()
 
   if show_:
@@ -89,7 +89,6 @@ def save_pl_df(df_, folder_, file_, show_=False):
 
 def get(func_):
   url = f"{BASE_URL}{func_}"
-  print(url)
   r = requests.get(url)
   res = None
   if int(r.status_code)==200:
@@ -125,19 +124,37 @@ def get_instr(args):
   res = df
 
   save_pl_df(res, args.folder, INSTR, show_=True)
+  get_sectors(args)
   return res
 
 
 # Get Reports
 # -----------
 
+from pathlib import Path
+import json
 def get_reports(id, args):
   if args.apikey is None:
     print('--apikey is mandatory')
     sys.exit(1)
-  data = get(f'/instruments/{id}/reports?authKey={args.apikey}&maxYearCount=20&maxR12QCount=40&original=0')
+  url = f'/instruments/{id}/reports?authKey={args.apikey}&maxYearCount=20&maxR12QCount=40&original=0'
+  if args.quarters:
+    url = f'/instruments/{id}/reports/quarter?authKey={args.apikey}&maxYearCount=20&maxR12QCount=40&original=0'
+  data = get(url)
+
+  if args.save_json:
+    Path(f'{args.folder}.json').mkdir(parents=True, exist_ok=True)
+    with open(f'{args.folder}.json/{id}.json', 'w') as outfile:
+      outfile.write(json.dumps(data))
+    
   if not data is None:
-    df = pd.DataFrame(data['reportsYear'])
+    if not args.quarters:
+      if args.R12:
+        df = pd.DataFrame(data['reportsR12'])
+      else:
+        df = pd.DataFrame(data['reportsYear'])
+    else:
+      df = pd.DataFrame(data['reports'])
     path_ = f'{args.folder}/{id}.csv'
     df.to_csv(path_, index=False)
     print(f'Result saved to {path_}')
@@ -208,7 +225,7 @@ def instr_ev(args):
   print_hist(df0['EV - Senaste'], log_=True)
   return df
   
-def tots0(folder_):
+def tots0(folder_, quarters=False):
   #path_ = f'{folder_}/{ALL_CSV}'
   cnt = 0
   res = None
@@ -224,6 +241,8 @@ def tots0(folder_):
       save_pl_df(res, folder_, ALL)
     try:
       df = pl.read_csv(f'{folder_}/{f}', infer_schema=False)
+      if quarters:
+        df = df.with_columns( (pl.col('year').cast(pl.Int32)*10 + pl.col('period').cast(pl.Int32) ).alias('year'))
     except:
       print(f'Error reading {f}!')
       incorrect_files.append(f)
@@ -232,12 +251,13 @@ def tots0(folder_):
                           .cast(pl.Boolean))
     df = df.cast(dtypes_)
     df = df.with_columns(insId = pl.lit(int(f.removesuffix('.csv'))))
+    df = df.with_columns(  pl.col('year')*10 +  pl.col('period'))           # JC, 250425 - allow multiple rows per year
     if res is None:
       res = df
     else:
       res = pl.concat([res, df])
     cnt += 1
-  save_pl_df(res, folder, ALL, show_=True)
+  save_pl_df(res, folder_, ALL, show_=True)
   print(f'These files could not be read: {incorrect_files}!')
   return df
 
@@ -271,7 +291,7 @@ def tots(args):
 # Use less memory
 def totall(args):
   if not args.use_cached_all:
-    tots0(args.folder)
+    tots0(args.folder, quarters=args.quarters)
   else:
     print(f'Using cached {ALL}.csv')
   df = pl.read_csv(f'{args.folder}/{ALL}.csv', infer_schema=True)
@@ -355,6 +375,51 @@ def get_lastprice(args):
   return df
 
 
+# Get Sectors etc
+# ---------------
+
+def gg(key):
+  df = None
+  data = get(f'/{key}?authKey={args.apikey}')
+  if not data is None:
+    df = pd.DataFrame(data[key])
+  else:
+    print(f'Unable to fetch {key}')
+
+  path_ = f'{args.folder}/bd{key}.csv'
+  df.to_csv(path_, index=False)
+  print(f'Result saved to {path_}')
+  
+
+def get_sectors(args):
+  if args.apikey is None:
+    print('--apikey is mandatory')
+    sys.exit(1)
+  
+  gg('branches')  
+  gg('sectors')  
+  gg('markets')  
+
+  # insId,name,urlName,instrument,isin,ticker,yahoo,sectorId,marketId,branchId,countryId,listingDate,stockPriceCurrency,reportCurrency
+  instr    = pd.read_csv(f'{args.folder}/{INSTR}.csv')
+  branches = pd.read_csv(f'{args.folder}/bdbranches.csv')
+  sectors  = pd.read_csv(f'{args.folder}/bdsectors.csv')
+  markets  = pd.read_csv(f'{args.folder}/bdmarkets.csv')
+
+  branches['branchName'] = branches.name
+  sectors['sectorName'] = sectors.name
+  markets['marketName'] = markets.name
+  
+  df = instr.merge(branches, left_on='branchId', right_on='id', suffixes=('','_y'))
+  df = df.merge(sectors, left_on='sectorId', right_on='id', suffixes=('','_y'))
+  df = df.merge(markets, left_on='marketId', right_on='id', suffixes=('','_y'))
+  
+  df = df[list(filter(lambda x: not (x.endswith('_y') or x=='id' or x=='isIndex'), df.columns))]
+
+  save_pl_df(pl.from_pandas(df), args.folder, INSTR, show_=True)
+
+  
+  
 # Main
 # ===
 
@@ -364,6 +429,11 @@ def main(args):
   
   if args.action=='instr':
     get_instr(args)
+  elif args.action=='report':
+    if args.insId is None:
+      print('ERROR: insId is mandatory')
+      sys.exit(1)
+    get_reports(args.insId, args)
   elif args.action=='reports':
     get_all_reports(args)
   elif args.action=='check_reports':
@@ -378,6 +448,8 @@ def main(args):
     totall(args)
   elif args.action=='last':
     get_lastprice(args)
+  elif args.action=='sectors':
+    get_sectors(args)
   else:
     print(f'Unknown action {args.action}')
 
@@ -386,10 +458,14 @@ desc_ = 'Fetch fundamental data and prices from borsdata.se'
 def create_args_parser(parser=None):
   if parser is None:
     parser = argparse.ArgumentParser(prog='borsdata.py', description=desc_)
-  parser.add_argument('action',            help=f'What to do. instr_ev requires {BASE_DATA}.csv', choices=['instr','instr_ev','reports','check_reports','get_missing_reports','ts','tall','last'])
+  parser.add_argument('action',            help=f'What to do. instr_ev requires {BASE_DATA}.csv', choices=['instr','instr_ev','reports','check_reports','get_missing_reports','ts','tall','last','sectors','report'])
   parser.add_argument('folder',            help='Where to save the data')
   parser.add_argument('--apikey',          help='Börsdata API Key')
+  parser.add_argument('--insId',           help='Börsdata Intrument ID')
   parser.add_argument('--use-cached-all',  help=f'Use exising {ALL}.csv (previously created by tots)', default=True, action=argparse.BooleanOptionalAction)
+  parser.add_argument('--save-json',       help=f'Save full json data in <folder>.json', default=False, action=argparse.BooleanOptionalAction)
+  parser.add_argument('--R12',             help=f'Use rolling 12 months of quarterly data', default=True, action=argparse.BooleanOptionalAction)
+  parser.add_argument('--quarters',        help=f'Download and use data pre quarter', default=False, action=argparse.BooleanOptionalAction)
   parser.add_argument('--even',            help='Set to 0 or 1 (default). Download data for instruments Id that are even. Börsdata allows 10k API calls per day and has ~14k unique stocks.', type=int, default=1)
   parser.add_argument("--backend",
         help="Backends to use. Supported are: parquet, duckdb and csv (default=parquet).",

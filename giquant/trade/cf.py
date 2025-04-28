@@ -37,17 +37,21 @@ def create_args_parser():
     )
     parser.add_argument("--cal", help="Calendar group in config file (default=calF)", default="calF")
     parser.add_argument(
-        "--years_back", help="Calendar group in config file (default=30)", default=30, type=int
+        "--years_back", help="Maximum number of years history to inclucde (default=30)", default=30, type=int
     )
     parser.add_argument(
-        "--years_forward", help="Calendar group in config file (default=5)", default=5, type=int
+        "--years_forward", help="Maximum number of future year deliveries to include (default=5)", default=5, type=int
+    )
+    parser.add_argument(
+        "--file_naming", help="File naming approach. For SierraChart use:'{root_symbol}{month}{yy}*.dly', For NorgateData use:{root_symbol}-{yyyy}{month}.csv",
+        default='{root_symbol}{month}{yy}*.dly'
     )
 
     return parser
 
 
 def create_all_contract_months(
-    price_folder, df_cal, from_dt, to_dt, root_symbols_to_incl
+        price_folder, df_cal, from_dt, to_dt, root_symbols_to_incl, glob_pattern
 ):
     df_res = None
     for root_symbol in df_cal.root_symbol.unique():
@@ -65,14 +69,24 @@ def create_all_contract_months(
             ]
             i = 1
             while i < df_cal_sel.shape[0]:
-                year = df_cal_sel.iloc[i].year % 100
+                year = df_cal_sel.iloc[i].year
+                year2 = year % 100
+                
+                #if glob_pattern.find('{yy}') > 0:
+                if glob_pattern.find('02d') > 0:
+                  year = year2
+                
                 sel_from_dt = int2dt(df_cal_sel.iloc[i - 1].exp) + datetime.timedelta(
                     days=1
                 )
                 sel_to_dt = int2dt(df_cal_sel.iloc[i].exp)
                 i += 1
-                filename = f"{price_folder}/{root_symbol}{month}{year:02d}*.dly"
+
+                # NOTE: ugly hack!! apply f-string dynamically using eval
+                filename = r"{price_folder}/" + glob_pattern
+                filename = eval(f'f{filename!r}')
                 files = glob.glob(filename)
+
                 if len(files) == 0:
                     continue
                 if len(files) > 1:
@@ -80,13 +94,23 @@ def create_all_contract_months(
                     sys.exit(1)
 
                 df_ = pd.read_csv(files[0], parse_dates=["Date"])
+                df_.columns = list(map(lambda x: x.replace(' ',''), df_.columns))
+                
                 if df_.shape[0] == 0 or df_.isna().all().all():
                     continue
 
                 df_.columns = list(map(lambda x: x.strip(), df_.columns))
-                df_["symbol"] = f"{root_symbol}{month}{year}"
+                df_["symbol"] = f"{root_symbol}{month}{year2}"
                 df_["ContSymbol"] = f"{root_symbol}{month}"
                 df_ = df_[(df_.Date >= sel_from_dt) & (df_.Date <= sel_to_dt)]
+
+                #print(df_cal_sel.iloc[i].year)
+                #print(year)
+                #print(filename)
+                #print(files)
+                #print(df_)
+                #sys.exit(1)
+
                 if df_.shape[0] == 0:
                     print(f"WARNING: Empty file {filename}")
                     continue
@@ -239,12 +263,18 @@ def create_cc_df(df_, root_symbols):
         df0 = df_[sel]
         contract = prev_contract = None
         for idx, row in df0.iterrows():
-            contract = row[f"{root_symbol}_CC"]
+            if not f'{root_symbol}_CC' in row:
+                continue
+            contract = row[f'{root_symbol}_CC']
+            if contract is None or len(contract)==0:
+                continue
             cols = row.index[list(map(lambda x: not re.search(f'{contract}_.*',x) is None, row.index))].tolist()
             new_cols = list(map(new_col_names, cols))
             df_res.loc[idx,new_cols] = row[cols].values
             df_res.loc[idx,f"{root_symbol}_roll"] = (contract!=prev_contract)*1
             prev_contract = contract
+        # defragment df
+        df_res = df_res.copy()
     return df_res
 
 
@@ -257,10 +287,34 @@ def main(args):
     )
 
     df_cal = giquant.trade.cl.get_exps(args.config, args.cal, from_dt, to_dt)
-    df = create_all_contract_months(
-        args.price_folder, df_cal, from_dt, to_dt, args.symbols
-    )
 
+    # parse file_naming string and create glob-pattern for the price files
+    valid_tokens = [r'{root_symbol}',r'{month}',r'{yy}',r'{yyyy}',r'-',r'_',r'*',r'.csv',r'.dly']
+    s,res,found_token = args.file_naming, [], True
+    while found_token and len(s) > 0:
+        found_token = False
+        for token in valid_tokens:
+            if s.startswith(token):
+                res.append(token)
+                found_token = True
+                s = s[len(token):]
+                continue
+
+    if not found_token:
+        print(f'ERROR: file_naming {args.file_naming} not supported! Parse failed at {s}')
+        sys.exit(1)
+    
+    glob_pattern = r''
+    for part in res:
+        if part=='{yy}':
+            glob_pattern += r'{year:02d}'
+        elif part=='{yyyy}':
+            glob_pattern += r'{year:04d}'
+        else:
+            glob_pattern += part
+    df = create_all_contract_months(
+        args.price_folder, df_cal, from_dt, to_dt, args.symbols, glob_pattern
+    )
     symbols = df_cal.root_symbol.unique()
     if args.symbols != "":
         symbols = list(set(symbols).intersection(set(args.symbols.split(","))))
