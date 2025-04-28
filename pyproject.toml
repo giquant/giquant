@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "giquant"
-version = "2025.0.3"
+version = "2025.0.6"
 dependencies = [
   "requests",
   "wget",
@@ -21,9 +21,9 @@ dependencies = [
   "scikit-learn",
   "ansi2html",
   "seaborn",
-  "Flask-Markdown",
-  "Flask-Misaka",
-  "Flask-WTF",
+#  "Flask-Markdown",
+#  "Flask-Misaka",
+#  "Flask-WTF",
 #  "tulipy",
   "pandas_ods_reader",
   "SQLAlchemy",
